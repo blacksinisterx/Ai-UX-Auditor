@@ -1,8 +1,10 @@
 """
 Orchestrates a full audit run: capture (if URL) -> OCR/accessibility ->
-readability -> saliency -> vision critique -> copy suggestions -> score ->
-annotate -> persist. Bounded AI calls: exactly one OpenRouter vision call
-and one Groq call per audit, per the plan.
+readability -> score -> saliency + attention insight -> vision critique ->
+synthesis (executive summary + copy suggestions) -> annotate -> persist.
+Bounded AI calls: exactly one OpenRouter vision call and one Groq call per
+audit, per the plan -- the Groq call does more work per call (summary +
+rewrites together) rather than adding a second call.
 """
 import os
 import subprocess
@@ -16,14 +18,15 @@ from convex import ConvexClient
 
 from lenses.accessibility import run_rule_book_lens
 from lenses.annotate import draw_issue_overlay
-from lenses.attention_utils import box_attention_overlap, heatmap_overlay
+from lenses.attention_utils import compute_attention_insight, heatmap_overlay
 from lenses.capture import capture_screenshot
-from lenses.copy_editor import run_copy_editor_lens
+from lenses.copy_editor import run_synthesis_lens
 from lenses.readability import score_text_blocks
 from lenses.scoring import compute_overall_score, find_cta_candidate
 from lenses.vision import run_design_eye_lens
 
 AGENT_DIR = os.path.dirname(os.path.abspath(__file__))
+TOTAL_STAGES = 6
 
 
 def _predict_saliency_isolated(image_path: str, tmp_dir: str) -> np.ndarray:
@@ -36,8 +39,6 @@ def _predict_saliency_isolated(image_path: str, tmp_dir: str) -> np.ndarray:
         cwd=AGENT_DIR,
     )
     return np.load(heatmap_path)
-
-TOTAL_STAGES = 6
 
 
 def _client() -> ConvexClient:
@@ -90,27 +91,37 @@ def run_audit(audit_id: str) -> None:
         rule_book = run_rule_book_lens(screenshot_path)
         texts = [b["text"] for b in rule_book["text_boxes"]]
 
-        _report_progress(client, audit_id, "Copy Editor: readability scoring", 2, log)
         readability_results = score_text_blocks(texts)
         flagged_texts = [r["text"] for r in readability_results if r["flagged_low_readability"]]
-        copy_suggestions = run_copy_editor_lens(flagged_texts) if flagged_texts else []
-
-        _report_progress(client, audit_id, "Psychologist: saliency prediction", 3, log)
-        heatmap = _predict_saliency_isolated(screenshot_path, tmp)
-        cta = find_cta_candidate(rule_book["size_issues"])
-        if cta is not None:
-            b = cta["box"]
-            overlap = box_attention_overlap(heatmap, b["x0"], b["y0"], b["x1"], b["y1"])
-            log.append(f"Attention on likely CTA ({cta['text']!r}): {overlap:.1%} of total focus")
-
-        _report_progress(client, audit_id, "Design Eye: layout critique", 4, log)
-        layout_critique = run_design_eye_lens(screenshot_path)
-
-        _report_progress(client, audit_id, "Scoring + rendering overlays", 5, log)
         overall_score = compute_overall_score(
             rule_book["contrast_issues"], rule_book["size_issues"], readability_results
         )
 
+        _report_progress(client, audit_id, "Psychologist: saliency prediction", 2, log)
+        heatmap = _predict_saliency_isolated(screenshot_path, tmp)
+        cta = find_cta_candidate(rule_book["size_issues"])
+        attention_insight = compute_attention_insight(heatmap, cta) if cta is not None else None
+        if attention_insight:
+            log.append(
+                f"Attention on likely CTA ({attention_insight['ctaText']!r}): "
+                f"{attention_insight['overlapPercent']}% of total focus, "
+                f"{attention_insight['densityRatio']}x density ratio"
+            )
+
+        _report_progress(client, audit_id, "Design Eye: layout critique", 3, log)
+        layout_critique = run_design_eye_lens(screenshot_path)
+
+        _report_progress(client, audit_id, "Synthesizing findings", 4, log)
+        synthesis = run_synthesis_lens(
+            flagged_texts=flagged_texts,
+            score=overall_score,
+            contrast_fail_count=sum(1 for c in rule_book["contrast_issues"] if not c["passes_wcag_aa"]),
+            size_fail_count=sum(1 for s in rule_book["size_issues"] if not s["passes_min_target_size"]),
+            attention_insight=attention_insight,
+            design_flaw=layout_critique.get("flaw", ""),
+        )
+
+        _report_progress(client, audit_id, "Rendering overlays", 5, log)
         annotated = draw_issue_overlay(screenshot_path, rule_book["contrast_issues"], rule_book["size_issues"])
         annotated_path = os.path.join(tmp, "annotated.png")
         cv2.imwrite(annotated_path, annotated)
@@ -127,11 +138,13 @@ def run_audit(audit_id: str) -> None:
             {
                 "auditId": audit_id,
                 "overallScore": overall_score,
+                "executiveSummary": synthesis["executiveSummary"],
                 "layoutCritique": layout_critique,
-                "copySuggestions": copy_suggestions,
+                "copySuggestions": synthesis["copySuggestions"],
                 "contrastIssues": rule_book["contrast_issues"],
                 "sizeIssues": rule_book["size_issues"],
                 "readability": readability_results,
+                "attentionInsight": attention_insight,
                 "saliencyHeatmapStorageId": heatmap_storage_id,
                 "annotatedImageStorageId": annotated_storage_id,
             },

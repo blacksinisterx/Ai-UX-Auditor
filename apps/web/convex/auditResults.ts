@@ -22,11 +22,13 @@ export const submit = mutation({
   args: {
     auditId: v.id("audits"),
     overallScore: v.number(),
+    executiveSummary: v.string(),
     layoutCritique: v.any(),
     copySuggestions: v.any(),
     contrastIssues: v.any(),
     sizeIssues: v.any(),
     readability: v.any(),
+    attentionInsight: v.optional(v.any()),
     saliencyHeatmapStorageId: v.id("_storage"),
     annotatedImageStorageId: v.id("_storage"),
   },

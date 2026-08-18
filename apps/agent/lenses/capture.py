@@ -43,12 +43,22 @@ def validate_public_http_url(url: str) -> str:
 
 
 def capture_screenshot(url: str, output_path: str, timeout_ms: int = 20_000) -> None:
+    """Real bug found by actually looking at a captured screenshot (not
+    just trusting that OCR found *something*): `wait_until="load"` fires
+    as soon as the initial document + resources load, which on a modern
+    JS-rendered site (verified against linear.app) is often still a
+    near-blank shell -- the hero content hadn't painted yet, so every
+    downstream lens was auditing an almost-empty page and had nothing
+    real to say. `networkidle` plus a short fixed settle time catches the
+    client-side render and any fade-in transitions.
+    """
     validate_public_http_url(url)
     with sync_playwright() as p:
         browser = p.chromium.launch()
         try:
             page = browser.new_page(viewport=VIEWPORT)
-            page.goto(url, wait_until="load", timeout=timeout_ms)
+            page.goto(url, wait_until="networkidle", timeout=timeout_ms)
+            page.wait_for_timeout(1500)
             page.screenshot(path=output_path)
         finally:
             browser.close()

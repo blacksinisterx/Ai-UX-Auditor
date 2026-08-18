@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery } from "convex/react";
 import { motion } from "motion/react";
 import { animate } from "motion";
-import { Loader2 } from "lucide-react";
+import { Loader2, Sparkles, TrendingDown, TrendingUp, Minus } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +44,14 @@ type SizeIssue = {
 type CopySuggestion = { original: string; suggestion: string };
 
 type LayoutCritique = { hierarchy: string; whitespace: string; cta: string; flaw: string };
+
+type AttentionInsight = {
+  ctaText: string;
+  overlapPercent: number;
+  areaPercent: number;
+  densityRatio: number;
+  verdict: string;
+};
 
 type HoveredBox = { box: Box; kind: "contrast" | "size" };
 
@@ -130,6 +138,34 @@ export function ReportCard({ audit }: { audit: AuditDoc }) {
             <span className="text-sm text-muted-foreground">{audit.sourceUrl}</span>
           )}
         </motion.div>
+
+        {result.executiveSummary && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: EASE, delay: 0.04 }}
+          >
+            <Card
+              className="border-primary/30 bg-primary/5 overflow-hidden"
+              style={{
+                background:
+                  "linear-gradient(135deg, color-mix(in oklch, var(--primary) 8%, var(--card)), var(--card))",
+              }}
+            >
+              <CardContent className="flex items-start gap-(--space-md)">
+                <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+                  <Sparkles className="size-4" />
+                </span>
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs font-semibold tracking-wide text-primary uppercase">
+                    The headline finding
+                  </span>
+                  <p className="text-sm leading-relaxed text-foreground">{result.executiveSummary}</p>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
 
         <div className="grid gap-(--space-xl) lg:grid-cols-2 lg:items-start">
           <motion.div
@@ -344,19 +380,73 @@ export function ReportCard({ audit }: { audit: AuditDoc }) {
                 </Card>
               </TabsContent>
 
-              <TabsContent value="psychologist" className="mt-(--space-md)">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Where attention actually goes</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground">
-                      A real saliency model predicted the heatmap above — toggle &quot;Attention
-                      heatmap&quot; on the screenshot to see exactly where a viewer&apos;s eyes are
-                      drawn first, and check it against where your call-to-action actually is.
-                    </p>
-                  </CardContent>
-                </Card>
+              <TabsContent value="psychologist" className="mt-(--space-md) flex flex-col gap-(--space-md)">
+                {(() => {
+                  const insight = result.attentionInsight as AttentionInsight | null | undefined;
+                  if (!insight) {
+                    return (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-base">Where attention actually goes</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-sm text-muted-foreground">
+                            No confident call-to-action candidate was found to measure attention
+                            against on this page.
+                          </p>
+                        </CardContent>
+                      </Card>
+                    );
+                  }
+                  const isUnderindexed = insight.densityRatio < 0.7;
+                  const isOverindexed = insight.densityRatio >= 1.5;
+                  const TrendIcon = isOverindexed ? TrendingUp : isUnderindexed ? TrendingDown : Minus;
+                  const trendColor = isOverindexed
+                    ? "text-primary"
+                    : isUnderindexed
+                      ? "text-destructive"
+                      : "text-chart-3";
+                  return (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">
+                          Attention vs. &quot;{insight.ctaText}&quot;
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="flex flex-col gap-(--space-lg)">
+                        <div className="grid grid-cols-3 gap-(--space-md) text-center">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-2xl font-bold tabular-nums">
+                              {insight.areaPercent}%
+                            </span>
+                            <span className="text-xs text-muted-foreground">of screen area</span>
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-2xl font-bold tabular-nums">
+                              {insight.overlapPercent}%
+                            </span>
+                            <span className="text-xs text-muted-foreground">of visual attention</span>
+                          </div>
+                          <div className={`flex flex-col gap-1 ${trendColor}`}>
+                            <span className="flex items-center justify-center gap-1 text-2xl font-bold tabular-nums">
+                              <TrendIcon className="size-5" />
+                              {insight.densityRatio}×
+                            </span>
+                            <span className="text-xs text-muted-foreground">attention density</span>
+                          </div>
+                        </div>
+                        <Separator />
+                        <p className="text-sm leading-relaxed text-muted-foreground">
+                          A real saliency model predicted the heatmap on the screenshot — a density
+                          of <strong className="text-foreground">1.0×</strong> would mean this
+                          element gets exactly the attention its size predicts. This one{" "}
+                          <strong className="text-foreground">{insight.verdict}</strong>. Toggle
+                          &quot;Attention heatmap&quot; on the screenshot to see it directly.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  );
+                })()}
               </TabsContent>
             </Tabs>
           </motion.div>

@@ -13,11 +13,13 @@ export default defineSchema({
   auditResults: defineTable({
     auditId: v.id("audits"),
     overallScore: v.number(),
+    executiveSummary: v.string(),
     layoutCritique: v.any(), // { hierarchy, whitespace, cta, flaw }
     copySuggestions: v.any(),
     contrastIssues: v.any(),
     sizeIssues: v.any(),
     readability: v.any(),
+    attentionInsight: v.optional(v.any()), // { ctaText, overlapPercent, areaPercent, densityRatio, verdict }
     saliencyHeatmapStorageId: v.id("_storage"),
     annotatedImageStorageId: v.id("_storage"),
   }).index("by_audit", ["auditId"]),
