@@ -202,7 +202,7 @@ export function ReportCard({ audit }: { audit: AuditDoc }) {
                   </button>
                 </div>
               </div>
-              <div className="relative">
+              <div className="relative max-h-[75vh] overflow-y-auto">
                 {/* eslint-disable-next-line @next/next/no-img-element -- Convex-hosted, arbitrary-origin image */}
                 <img
                   ref={imgRef}

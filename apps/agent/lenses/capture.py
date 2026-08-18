@@ -59,6 +59,6 @@ def capture_screenshot(url: str, output_path: str, timeout_ms: int = 20_000) -> 
             page = browser.new_page(viewport=VIEWPORT)
             page.goto(url, wait_until="networkidle", timeout=timeout_ms)
             page.wait_for_timeout(1500)
-            page.screenshot(path=output_path)
+            page.screenshot(path=output_path, full_page=True)
         finally:
             browser.close()

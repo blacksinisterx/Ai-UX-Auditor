@@ -1,19 +1,23 @@
 """
-"Design Eye" lens: one bounded call to a free OpenRouter vision model for
-qualitative layout/hierarchy/whitespace/CTA critique. Deliberately text-only
-output -- precise bounding-box coordinates from a free/smaller vision model
-are unverified, so geometry stays with OCR boxes + the saliency lens instead.
+"Design Eye" lens: one bounded call to Gemini for qualitative
+layout/hierarchy/whitespace/CTA critique. Deliberately text-only output --
+precise bounding-box coordinates from a vision model are unverified, so
+geometry stays with OCR boxes + the saliency lens instead.
 
-Model choice: "openrouter/free", the auto-router across whatever's
-currently free -- switched to this as the primary choice (not just a
-fallback) after directly verifying it: the specific pinned free model
-(google/gemma-4-31b-it:free) hit a 429 "temporarily rate-limited upstream"
-on literally the first real request, on a fresh key, before this had even
-shipped (and again on a later retest -- consistently unavailable, not a
-one-off). The auto-router routed around that immediately. Pinned free
-model IDs are named here only as a documented alternative if the
-auto-router itself ever needs bypassing -- check
-openrouter.ai/models?fmt=free for a current one.
+Model choice: Gemini via Google's OpenAI-compatible endpoint
+("gemini-3.6-flash"). Replaced two earlier free-tier attempts after
+directly testing both against the real critique prompt on a real
+screenshot, not assuming: OpenRouter's "openrouter/free" auto-router
+worked but produced shallow, generic critiques (whichever free model it
+landed on that call). Groq's only vision-capable model
+("qwen/qwen3.6-27b") produces excellent, specific scene understanding but
+is a reasoning model -- on the real prompt it burned its whole response on
+visible step-by-step "thinking" and never converged to the requested JSON,
+which is a structural mismatch (not a one-off flake) with a
+respond-with-only-JSON lens. Gemini 3.6 Flash (gemini-2.5-flash is
+deprecated, per Google's own 404 error on that model ID) is a
+non-reasoning model that reliably follows the JSON-only instruction and
+gives specific, quoted, non-generic critiques.
 
 Structured JSON output, not free-text markdown: an earlier version asked
 for a single markdown-formatted paragraph (with **bold** section
@@ -41,8 +45,7 @@ import re
 
 from openai import OpenAI
 
-VISION_MODEL = "openrouter/free"
-VISION_MODEL_PINNED_ALTERNATIVE = "google/gemma-4-31b-it:free"
+VISION_MODEL = "gemini-3.6-flash"
 
 CRITIQUE_PROMPT = """You are a senior product designer reviewing a screenshot of a real UI. In every field, \
 name the actual visible text, button, or element you're referring to -- quote it. Never use generic filler \
@@ -63,8 +66,8 @@ Critique = dict[str, str]
 
 def _client() -> OpenAI:
     return OpenAI(
-        base_url="https://openrouter.ai/api/v1",
-        api_key=os.environ["OPENROUTER_API_KEY"],
+        base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+        api_key=os.environ["GEMINI_API_KEY"],
     )
 
 
