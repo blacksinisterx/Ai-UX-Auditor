@@ -5,20 +5,37 @@ annotate -> persist. Bounded AI calls: exactly one OpenRouter vision call
 and one Groq call per audit, per the plan.
 """
 import os
+import subprocess
+import sys
 import tempfile
 
 import cv2
+import numpy as np
 import requests
 from convex import ConvexClient
 
 from lenses.accessibility import run_rule_book_lens
 from lenses.annotate import draw_issue_overlay
-from lenses.attention import box_attention_overlap, heatmap_overlay, predict_saliency
+from lenses.attention_utils import box_attention_overlap, heatmap_overlay
 from lenses.capture import capture_screenshot
 from lenses.copy_editor import run_copy_editor_lens
 from lenses.readability import score_text_blocks
 from lenses.scoring import compute_overall_score, find_cta_candidate
 from lenses.vision import run_design_eye_lens
+
+AGENT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def _predict_saliency_isolated(image_path: str, tmp_dir: str) -> np.ndarray:
+    """Runs saliency prediction in a subprocess -- see run_saliency_subprocess.py
+    for why this can never be an in-process import."""
+    heatmap_path = os.path.join(tmp_dir, "heatmap.npy")
+    subprocess.run(
+        [sys.executable, os.path.join(AGENT_DIR, "run_saliency_subprocess.py"), image_path, heatmap_path],
+        check=True,
+        cwd=AGENT_DIR,
+    )
+    return np.load(heatmap_path)
 
 TOTAL_STAGES = 6
 
@@ -79,7 +96,7 @@ def run_audit(audit_id: str) -> None:
         copy_suggestions = run_copy_editor_lens(flagged_texts) if flagged_texts else []
 
         _report_progress(client, audit_id, "Psychologist: saliency prediction", 3, log)
-        heatmap = predict_saliency(screenshot_path)
+        heatmap = _predict_saliency_isolated(screenshot_path, tmp)
         cta = find_cta_candidate(rule_book["size_issues"])
         if cta is not None:
             b = cta["box"]

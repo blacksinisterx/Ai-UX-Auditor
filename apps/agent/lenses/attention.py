@@ -10,14 +10,22 @@ in this installed tensorflow==2.21/keras==3.15) -- this uses
 `tf.saved_model.load(...).signatures["serving_default"]` instead, which
 does work, with the real output key `layer_from_saved_model` (not the
 README's `"output"`, which is a Keras-model-wrapper-only key name).
-CPU inference took ~3.3s for a 1280x800 image on this machine -- comfortably
-within a GitHub Actions job.
+CPU inference took ~3.3s for a 1280x800 image on this machine.
+
+IMPORTANT: this module (and only this module) imports TensorFlow. It must
+never be imported into the same process as paddleocr/paddlepaddle
+(lenses/accessibility.py) -- doing so segfaults on Linux (verified for
+real on a GitHub Actions runner: a hard SIGSEGV, not a catchable Python
+exception, from the two frameworks' native libraries colliding). That's
+exactly why predict_saliency() is invoked from run_saliency_subprocess.py
+as a separate process rather than imported directly by pipeline.py; the
+cv2/numpy-only helpers that don't need TensorFlow live in
+attention_utils.py instead, safe to import anywhere.
 """
 import os
 
 os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS", "1")
 
-import cv2
 import numpy as np
 import tensorflow as tf
 from huggingface_hub import snapshot_download
@@ -82,27 +90,6 @@ def predict_saliency(image_path: str) -> np.ndarray:
     input_tensor, vp, hp = _preprocess(input_image, target_shape)
     output = sig(input_1=input_tensor)["layer_from_saved_model"]
     return _postprocess(output, vp, hp, original_shape)
-
-
-def heatmap_overlay(image_path: str, heatmap: np.ndarray, alpha: float = 0.5) -> np.ndarray:
-    norm = ((heatmap - heatmap.min()) / (heatmap.max() - heatmap.min() + 1e-8) * 255).astype(np.uint8)
-    color_heat = cv2.applyColorMap(norm, cv2.COLORMAP_INFERNO)
-    original = cv2.imread(image_path)
-    return cv2.addWeighted(original, 1 - alpha, color_heat, alpha, 0)
-
-
-def box_attention_overlap(heatmap: np.ndarray, x0: int, y0: int, x1: int, y1: int) -> float:
-    """What fraction of the heatmap's total 'weight' falls inside this box.
-
-    This is the real, checkable number behind the "does attention actually
-    land on the CTA" claim -- not an LLM's opinion, a ratio of the model's
-    own output mass inside vs. outside a given bounding box.
-    """
-    total = heatmap.sum()
-    if total <= 0:
-        return 0.0
-    region = heatmap[max(0, y0) : y1, max(0, x0) : x1]
-    return float(region.sum() / total)
 
 
 def run_psychologist_lens(image_path: str) -> dict:
