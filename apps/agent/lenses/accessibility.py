@@ -25,6 +25,15 @@ from paddleocr import PaddleOCR
 # threshold sits in the real gap between those two clusters, not a guess.
 MIN_OCR_CONFIDENCE = 0.90
 
+# Single-character reads pass the confidence filter above just fine when
+# the glyph genuinely looks like a real letter -- which is exactly what
+# happens with logo marks that are themselves letterforms (Mistral's "M",
+# Zhipu's "Z", a stylized "A"). High confidence, still not real text: a
+# single character is essentially never meaningful copy a user reads, so
+# it's excluded from every check (contrast, target-size) rather than
+# trying to separately special-case "logo-shaped" boxes.
+MIN_TEXT_CHARS = 2
+
 _ocr: PaddleOCR | None = None
 
 
@@ -66,7 +75,7 @@ def extract_text_boxes(image_path: str) -> list[TextBox]:
     r0 = result[0]
     boxes = []
     for text, score, box in zip(r0["rec_texts"], r0["rec_scores"], r0["rec_boxes"]):
-        if score < MIN_OCR_CONFIDENCE:
+        if score < MIN_OCR_CONFIDENCE or len(text.strip()) < MIN_TEXT_CHARS:
             continue
         x0, y0, x1, y1 = (int(v) for v in box)
         boxes.append(TextBox(text=text, confidence=float(score), x0=x0, y0=y0, x1=x1, y1=y1))

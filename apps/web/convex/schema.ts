@@ -13,7 +13,7 @@ export default defineSchema({
   auditResults: defineTable({
     auditId: v.id("audits"),
     overallScore: v.number(),
-    layoutCritique: v.string(),
+    layoutCritique: v.any(), // { hierarchy, whitespace, cta, flaw }
     copySuggestions: v.any(),
     contrastIssues: v.any(),
     sizeIssues: v.any(),

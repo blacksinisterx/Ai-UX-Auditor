@@ -43,6 +43,8 @@ type SizeIssue = {
 
 type CopySuggestion = { original: string; suggestion: string };
 
+type LayoutCritique = { hierarchy: string; whitespace: string; cta: string; flaw: string };
+
 type HoveredBox = { box: Box; kind: "contrast" | "size" };
 
 function scoreColor(score: number) {
@@ -221,10 +223,32 @@ export function ReportCard({ audit }: { audit: AuditDoc }) {
                   <CardHeader>
                     <CardTitle className="text-base">Layout & structure</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <p className="text-sm leading-relaxed text-muted-foreground">
-                      {result.layoutCritique}
-                    </p>
+                  <CardContent className="flex flex-col gap-(--space-md)">
+                    {(() => {
+                      const critique = result.layoutCritique as LayoutCritique | null;
+                      if (!critique) {
+                        return (
+                          <p className="text-sm text-muted-foreground">No critique available.</p>
+                        );
+                      }
+                      const sections: { label: string; key: keyof LayoutCritique }[] = [
+                        { label: "Hierarchy", key: "hierarchy" },
+                        { label: "Whitespace & density", key: "whitespace" },
+                        { label: "Call-to-action", key: "cta" },
+                        { label: "One concrete flaw", key: "flaw" },
+                      ];
+                      return sections.map((s, i) => (
+                        <div key={s.key}>
+                          {i > 0 && <Separator className="mb-(--space-md)" />}
+                          <p className="mb-1 text-xs font-semibold tracking-wide text-foreground uppercase">
+                            {s.label}
+                          </p>
+                          <p className="text-sm leading-relaxed text-muted-foreground">
+                            {critique[s.key]}
+                          </p>
+                        </div>
+                      ));
+                    })()}
                   </CardContent>
                 </Card>
               </TabsContent>

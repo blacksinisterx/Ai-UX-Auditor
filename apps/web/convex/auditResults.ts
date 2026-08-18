@@ -22,7 +22,7 @@ export const submit = mutation({
   args: {
     auditId: v.id("audits"),
     overallScore: v.number(),
-    layoutCritique: v.string(),
+    layoutCritique: v.any(),
     copySuggestions: v.any(),
     contrastIssues: v.any(),
     sizeIssues: v.any(),
