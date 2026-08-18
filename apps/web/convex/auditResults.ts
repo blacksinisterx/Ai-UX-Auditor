@@ -1,4 +1,4 @@
-import { query } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
 export const getByAuditId = query({
@@ -14,5 +14,23 @@ export const getByAuditId = query({
       ctx.storage.getUrl(result.annotatedImageStorageId),
     ]);
     return { ...result, saliencyHeatmapUrl, annotatedImageUrl };
+  },
+});
+
+// Called once by the pipeline job at the end of a successful run.
+export const submit = mutation({
+  args: {
+    auditId: v.id("audits"),
+    overallScore: v.number(),
+    layoutCritique: v.string(),
+    copySuggestions: v.any(),
+    contrastIssues: v.any(),
+    sizeIssues: v.any(),
+    readability: v.any(),
+    saliencyHeatmapStorageId: v.id("_storage"),
+    annotatedImageStorageId: v.id("_storage"),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.insert("auditResults", args);
   },
 });

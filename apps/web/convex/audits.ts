@@ -28,3 +28,41 @@ export const get = query({
     return { ...audit, screenshotUrl };
   },
 });
+
+// Called by the GitHub Actions pipeline job (apps/agent/ci_run_audit.py) to
+// report progress as it works through the lenses. Kept as a regular public
+// mutation rather than an internal one requiring admin-key auth from Python
+// -- accepted tradeoff for a free, no-signup public demo tool with no
+// sensitive data, not a multi-tenant product.
+export const setProgress = mutation({
+  args: {
+    id: v.id("audits"),
+    status: v.string(),
+    stage: v.optional(v.string()),
+    percent: v.optional(v.number()),
+    log: v.optional(v.array(v.string())),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.id, {
+      status: args.status,
+      progress: { stage: args.stage, percent: args.percent, log: args.log },
+    });
+  },
+});
+
+export const markDone = mutation({
+  args: { id: v.id("audits") },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.id, { status: "done", completedAt: Date.now() });
+  },
+});
+
+export const markError = mutation({
+  args: { id: v.id("audits"), message: v.string() },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.id, {
+      status: "error",
+      progress: { stage: args.message, percent: 100 },
+    });
+  },
+});

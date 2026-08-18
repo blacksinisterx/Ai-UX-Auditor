@@ -55,6 +55,19 @@ export default function NewAuditPage() {
     }
   }
 
+  async function dispatchAudit(auditId: string) {
+    try {
+      const res = await fetch("/api/audits/dispatch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ auditId }),
+      });
+      if (!res.ok) console.warn("Dispatch failed, audit will stay pending:", await res.text());
+    } catch (e) {
+      console.warn("Dispatch request failed, audit will stay pending:", e);
+    }
+  }
+
   async function submitScreenshot() {
     if (!file) return;
     setSubmitting(true);
@@ -72,6 +85,7 @@ export default function NewAuditPage() {
         sourceType: "screenshot",
         screenshotStorageId: storageId,
       });
+      await dispatchAudit(auditId);
       router.push(`/audit/${auditId}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong.");
@@ -88,6 +102,7 @@ export default function NewAuditPage() {
     setError(null);
     try {
       const auditId = await createAudit({ sourceType: "url", sourceUrl: url });
+      await dispatchAudit(auditId);
       router.push(`/audit/${auditId}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong.");
