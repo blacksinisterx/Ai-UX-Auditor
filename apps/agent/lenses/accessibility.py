@@ -120,6 +120,35 @@ LARGE_TEXT_PX = 24  # px height proxy for the ~18.66pt-bold/24pt-regular WCAG "l
 MIN_TARGET_PX = 44  # WCAG 2.5.5/2.5.8 minimum interactive target size
 
 
+def _rgb_to_hex(rgb: tuple[float, float, float]) -> str:
+    return "#{:02x}{:02x}{:02x}".format(*(max(0, min(255, round(c))) for c in rgb))
+
+
+def suggest_fixed_text_color(
+    text_rgb: tuple[float, float, float], bg_rgb: tuple[float, float, float], threshold: float
+) -> tuple[float, float, float]:
+    """Binary-searches a blend of the existing text color toward black or
+    white (whichever direction already increases contrast against this
+    background) until it clears the threshold. A concrete, checkable
+    suggestion -- not "make it darker," an actual color that passes.
+    """
+    bg_lum = relative_luminance(bg_rgb)
+    text_lum = relative_luminance(text_rgb)
+    target = (0.0, 0.0, 0.0) if bg_lum > text_lum else (255.0, 255.0, 255.0)
+
+    lo, hi = 0.0, 1.0
+    best = text_rgb
+    for _ in range(20):
+        mid = (lo + hi) / 2
+        candidate = tuple(text_rgb[i] + (target[i] - text_rgb[i]) * mid for i in range(3))
+        if contrast_ratio(candidate, bg_rgb) >= threshold:
+            best = candidate
+            hi = mid
+        else:
+            lo = mid
+    return best
+
+
 def check_contrast(image: np.ndarray, boxes: list[TextBox]) -> list[dict]:
     issues = []
     for box in boxes:
@@ -128,15 +157,24 @@ def check_contrast(image: np.ndarray, boxes: list[TextBox]) -> list[dict]:
             continue
         ratio = contrast_ratio(text_rgb, bg_rgb)
         threshold = WCAG_AA_LARGE if box.height >= LARGE_TEXT_PX else WCAG_AA_NORMAL
+        passes = ratio >= threshold
+        suggestion = None
+        if not passes:
+            fixed_hex = _rgb_to_hex(suggest_fixed_text_color(text_rgb, bg_rgb, threshold))
+            suggestion = (
+                f"Contrast is {ratio:.2f}:1, needs {threshold}:1. Shift the text color to about "
+                f"{fixed_hex} (or lighten/darken the background instead) to clear it."
+            )
         issues.append(
             {
                 "text": box.text,
                 "box": asdict(box),
                 "contrast_ratio": round(ratio, 2),
                 "threshold": threshold,
-                "passes_wcag_aa": ratio >= threshold,
+                "passes_wcag_aa": passes,
                 "text_rgb": [round(c, 1) for c in text_rgb],
                 "bg_rgb": [round(c, 1) for c in bg_rgb],
+                "suggestion": suggestion,
             }
         )
     return issues
@@ -155,6 +193,13 @@ def check_target_sizes(boxes: list[TextBox]) -> list[dict]:
         if not looks_like_control:
             continue
         passes = box.height >= MIN_TARGET_PX and box.width >= MIN_TARGET_PX
+        suggestion = None
+        if not passes:
+            suggestion = (
+                f"Currently {box.width}x{box.height}px, needs at least {MIN_TARGET_PX}x{MIN_TARGET_PX}px. "
+                f"Add padding around this element so the full tappable/clickable area clears the minimum -- "
+                f"the visible text can stay the same size."
+            )
         issues.append(
             {
                 "text": box.text,
@@ -162,6 +207,7 @@ def check_target_sizes(boxes: list[TextBox]) -> list[dict]:
                 "width": box.width,
                 "height": box.height,
                 "passes_min_target_size": passes,
+                "suggestion": suggestion,
             }
         )
     return issues
