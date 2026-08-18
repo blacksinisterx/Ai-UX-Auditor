@@ -95,13 +95,21 @@ export default function NewAuditPage() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-xl flex-1 flex-col justify-center gap-(--space-lg) px-(--space-lg) py-(--space-2xl)">
-      <div className="flex flex-col gap-(--space-xs) text-center">
-        <h1 className="text-2xl font-semibold sm:text-3xl">Start a new audit</h1>
-        <p className="text-muted-foreground">
-          Upload a UI screenshot, or paste a URL and Aura will capture one.
-        </p>
-      </div>
+    <div className="relative flex min-h-[calc(100vh-53px)] items-center">
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-96"
+        style={{
+          background:
+            "radial-gradient(60% 100% at 50% 0%, color-mix(in oklch, var(--primary) 12%, transparent), transparent)",
+        }}
+      />
+      <div className="relative mx-auto flex w-full max-w-xl flex-col gap-(--space-lg) px-(--space-lg) py-(--space-3xl)">
+        <div className="flex flex-col gap-(--space-xs) text-center">
+          <h1 className="text-2xl font-semibold sm:text-3xl">Start a new audit</h1>
+          <p className="text-muted-foreground">
+            Upload a UI screenshot, or paste a URL and Aura will capture one.
+          </p>
+        </div>
 
       <Card>
         <CardHeader>
@@ -166,8 +174,9 @@ export default function NewAuditPage() {
           </Tabs>
 
           {error && <p className="mt-(--space-sm) text-sm text-destructive">{error}</p>}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
