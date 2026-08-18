@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "convex/react";
+import { motion } from "motion/react";
 import { Upload, Link2, Loader2, ArrowRight } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -103,7 +104,12 @@ export default function NewAuditPage() {
             "radial-gradient(60% 100% at 50% 0%, color-mix(in oklch, var(--primary) 12%, transparent), transparent)",
         }}
       />
-      <div className="relative mx-auto flex w-full max-w-xl flex-col gap-(--space-lg) px-(--space-lg) py-(--space-3xl)">
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        className="relative mx-auto flex w-full max-w-xl flex-col gap-(--space-lg) px-(--space-lg) py-(--space-3xl)"
+      >
         <div className="flex flex-col gap-(--space-xs) text-center">
           <h1 className="text-2xl font-semibold sm:text-3xl">Start a new audit</h1>
           <p className="text-muted-foreground">
@@ -176,7 +182,7 @@ export default function NewAuditPage() {
           {error && <p className="mt-(--space-sm) text-sm text-destructive">{error}</p>}
           </CardContent>
         </Card>
-      </div>
+      </motion.div>
     </div>
   );
 }
