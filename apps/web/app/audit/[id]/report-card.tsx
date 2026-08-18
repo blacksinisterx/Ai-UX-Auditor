@@ -231,18 +231,21 @@ export function ReportCard({ audit }: { audit: AuditDoc }) {
                           <p className="text-sm text-muted-foreground">No critique available.</p>
                         );
                       }
-                      const sections: { label: string; key: keyof LayoutCritique }[] = [
+                      const allSections: { label: string; key: keyof LayoutCritique }[] = [
                         { label: "Hierarchy", key: "hierarchy" },
                         { label: "Whitespace & density", key: "whitespace" },
                         { label: "Call-to-action", key: "cta" },
                         { label: "One concrete flaw", key: "flaw" },
                       ];
+                      const sections = allSections.filter((s) => critique[s.key]?.trim());
                       return sections.map((s, i) => (
                         <div key={s.key}>
                           {i > 0 && <Separator className="mb-(--space-md)" />}
-                          <p className="mb-1 text-xs font-semibold tracking-wide text-foreground uppercase">
-                            {s.label}
-                          </p>
+                          {sections.length > 1 && (
+                            <p className="mb-1 text-xs font-semibold tracking-wide text-foreground uppercase">
+                              {s.label}
+                            </p>
+                          )}
                           <p className="text-sm leading-relaxed text-muted-foreground">
                             {critique[s.key]}
                           </p>
