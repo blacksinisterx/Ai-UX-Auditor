@@ -1,0 +1,7 @@
+{
+  "name": "ai-ux-auditor",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix apps/web run dev"
+  }
+}
