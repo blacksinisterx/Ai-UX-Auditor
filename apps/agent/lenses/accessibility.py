@@ -17,6 +17,14 @@ import cv2
 import numpy as np
 from paddleocr import PaddleOCR
 
+# Below this, a "text" reading is more likely PaddleOCR hallucinating a
+# character onto a logo/icon than real text. Verified against a real
+# screenshot (openrouter.ai) before picking this number: genuine UI text
+# clustered at confidence >=0.95 (median ~0.995), while logo misreads --
+# the ChatGPT icon read as "安", Qwen's as "⑤" -- scored 0.14-0.87. This
+# threshold sits in the real gap between those two clusters, not a guess.
+MIN_OCR_CONFIDENCE = 0.90
+
 _ocr: PaddleOCR | None = None
 
 
@@ -58,6 +66,8 @@ def extract_text_boxes(image_path: str) -> list[TextBox]:
     r0 = result[0]
     boxes = []
     for text, score, box in zip(r0["rec_texts"], r0["rec_scores"], r0["rec_boxes"]):
+        if score < MIN_OCR_CONFIDENCE:
+            continue
         x0, y0, x1, y1 = (int(v) for v in box)
         boxes.append(TextBox(text=text, confidence=float(score), x0=x0, y0=y0, x1=x1, y1=y1))
     return boxes
