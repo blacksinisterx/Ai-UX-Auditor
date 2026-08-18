@@ -97,16 +97,31 @@ def contrast_ratio(rgb1: tuple[float, float, float], rgb2: tuple[float, float, f
     return (lighter + 0.05) / (darker + 0.05)
 
 
+def text_pixel_mask(gray: np.ndarray) -> np.ndarray:
+    """Otsu-thresholds the region into two classes, then treats the
+    minority class as glyph strokes and the majority as background --
+    text usually covers less area than its background within a tight
+    crop around it. Shared by contrast sampling (read colors) and the
+    fixed-screenshot renderer (write colors).
+
+    A fixed 15th/85th-percentile split was tried first but silently broke
+    on the most extreme real cases: verified directly against a 1.11:1
+    "Log in" label where text and background are both near-black, where a
+    fixed percentile just re-splits noise instead of finding the actual
+    glyph shape. Otsu adaptively finds the threshold that best separates
+    the region's true bimodal distribution, which correctly recovered
+    that case (and held up on a moderate 3.82:1 case too) rather than
+    assuming a fixed split point works everywhere.
+    """
+    _, mask = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    mask = mask > 0
+    return ~mask if mask.sum() > mask.size / 2 else mask
+
+
 def sample_text_and_background_color(
     image: np.ndarray, box: TextBox
 ) -> tuple[tuple[float, float, float] | None, tuple[float, float, float] | None]:
-    """Estimate glyph color vs. local background color for a text box region.
-
-    Heuristic: within the box's local neighborhood, the minority extreme
-    (darkest or lightest ~15% of pixels) is treated as the glyph strokes,
-    and the rest as background -- text usually covers less area than its
-    background within a tight crop around it.
-    """
+    """Estimate glyph color vs. local background color for a text box region."""
     pad = 4
     y0, y1 = max(0, box.y0 - pad), min(image.shape[0], box.y1 + pad)
     x0, x1 = max(0, box.x0 - pad), min(image.shape[1], box.x1 + pad)
@@ -115,12 +130,7 @@ def sample_text_and_background_color(
         return None, None
 
     gray = cv2.cvtColor(region, cv2.COLOR_BGR2GRAY)
-    flat = gray.flatten()
-    dark_thresh = np.percentile(flat, 15)
-    light_thresh = np.percentile(flat, 85)
-    dark_mask = gray <= dark_thresh
-    light_mask = gray >= light_thresh
-    text_mask = dark_mask if dark_mask.sum() < light_mask.sum() else light_mask
+    text_mask = text_pixel_mask(gray)
     bg_mask = ~text_mask
 
     def mean_bgr(mask: np.ndarray) -> tuple[float, float, float] | None:
@@ -146,14 +156,27 @@ def _rgb_to_hex(rgb: tuple[float, float, float]) -> str:
 def suggest_fixed_text_color(
     text_rgb: tuple[float, float, float], bg_rgb: tuple[float, float, float], threshold: float
 ) -> tuple[float, float, float]:
-    """Binary-searches a blend of the existing text color toward black or
-    white (whichever direction already increases contrast against this
-    background) until it clears the threshold. A concrete, checkable
-    suggestion -- not "make it darker," an actual color that passes.
+    """Binary-searches a blend of the existing text color toward whichever
+    pure extreme (black or white) actually reaches a higher contrast
+    ratio against this background, until it clears the threshold. A
+    concrete, checkable suggestion -- not "make it darker," an actual
+    color that passes.
+
+    Real bug found by testing the most extreme case directly (a "Log in"
+    label at a 1.11:1 ratio, text and background both near-black): picking
+    the target by "whichever direction locally increases contrast from
+    the current color" -- i.e. comparing bg_lum vs text_lum -- breaks when
+    both colors sit in the same narrow dark (or light) cluster. Darkening
+    text that's already near-black toward pure black only reaches ~1.16:1
+    against a near-black background -- it can never reach 4.5:1, no matter
+    how far the blend goes, because the saturating extreme itself isn't
+    far enough from the background. Comparing the two extremes' actual
+    achievable ratios (not just local direction) picks white here instead,
+    correctly reaching the real fix.
     """
-    bg_lum = relative_luminance(bg_rgb)
-    text_lum = relative_luminance(text_rgb)
-    target = (0.0, 0.0, 0.0) if bg_lum > text_lum else (255.0, 255.0, 255.0)
+    black_contrast = contrast_ratio((0.0, 0.0, 0.0), bg_rgb)
+    white_contrast = contrast_ratio((255.0, 255.0, 255.0), bg_rgb)
+    target = (0.0, 0.0, 0.0) if black_contrast >= white_contrast else (255.0, 255.0, 255.0)
 
     lo, hi = 0.0, 1.0
     best = text_rgb
@@ -178,8 +201,10 @@ def check_contrast(image: np.ndarray, boxes: list[TextBox]) -> list[dict]:
         threshold = WCAG_AA_LARGE if box.height >= LARGE_TEXT_PX else WCAG_AA_NORMAL
         passes = ratio >= threshold
         suggestion = None
+        fixed_rgb = None
         if not passes:
-            fixed_hex = _rgb_to_hex(suggest_fixed_text_color(text_rgb, bg_rgb, threshold))
+            fixed_rgb = suggest_fixed_text_color(text_rgb, bg_rgb, threshold)
+            fixed_hex = _rgb_to_hex(fixed_rgb)
             suggestion = (
                 f"Contrast is {ratio:.2f}:1, needs {threshold}:1. Shift the text color to about "
                 f"{fixed_hex} (or lighten/darken the background instead) to clear it."
@@ -194,6 +219,7 @@ def check_contrast(image: np.ndarray, boxes: list[TextBox]) -> list[dict]:
                 "text_rgb": [round(c, 1) for c in text_rgb],
                 "bg_rgb": [round(c, 1) for c in bg_rgb],
                 "suggestion": suggestion,
+                "fixed_rgb": [round(c, 1) for c in fixed_rgb] if fixed_rgb else None,
             }
         )
     return issues

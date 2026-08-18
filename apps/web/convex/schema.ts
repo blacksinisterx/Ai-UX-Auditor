@@ -22,5 +22,6 @@ export default defineSchema({
     attentionInsight: v.optional(v.any()), // { ctaText, overlapPercent, areaPercent, densityRatio, verdict }
     saliencyHeatmapStorageId: v.id("_storage"),
     annotatedImageStorageId: v.id("_storage"),
+    fixedImageStorageId: v.optional(v.id("_storage")), // contrast-issue text pixels recolored to a passing color
   }).index("by_audit", ["auditId"]),
 });

@@ -9,11 +9,12 @@ export const getByAuditId = query({
       .withIndex("by_audit", (q) => q.eq("auditId", args.auditId))
       .unique();
     if (!result) return null;
-    const [saliencyHeatmapUrl, annotatedImageUrl] = await Promise.all([
+    const [saliencyHeatmapUrl, annotatedImageUrl, fixedImageUrl] = await Promise.all([
       ctx.storage.getUrl(result.saliencyHeatmapStorageId),
       ctx.storage.getUrl(result.annotatedImageStorageId),
+      result.fixedImageStorageId ? ctx.storage.getUrl(result.fixedImageStorageId) : null,
     ]);
-    return { ...result, saliencyHeatmapUrl, annotatedImageUrl };
+    return { ...result, saliencyHeatmapUrl, annotatedImageUrl, fixedImageUrl };
   },
 });
 
@@ -31,6 +32,7 @@ export const submit = mutation({
     attentionInsight: v.optional(v.any()),
     saliencyHeatmapStorageId: v.id("_storage"),
     annotatedImageStorageId: v.id("_storage"),
+    fixedImageStorageId: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args) => {
     await ctx.db.insert("auditResults", args);

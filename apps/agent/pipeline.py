@@ -1,10 +1,10 @@
 """
 Orchestrates a full audit run: capture (if URL) -> OCR/accessibility ->
 readability -> score -> saliency + attention insight -> vision critique ->
-synthesis (executive summary + copy suggestions) -> annotate -> persist.
-Bounded AI calls: exactly one OpenRouter vision call and one Groq call per
-audit, per the plan -- the Groq call does more work per call (summary +
-rewrites together) rather than adding a second call.
+synthesis (executive summary + copy suggestions) -> annotate + deterministic
+fixed-screenshot render -> persist. Bounded AI calls: exactly one Gemini
+vision call and one Groq call per audit -- the Groq call does more work
+per call (summary + rewrites together) rather than adding a second call.
 """
 import os
 import subprocess
@@ -21,6 +21,7 @@ from lenses.annotate import draw_issue_overlay
 from lenses.attention_utils import compute_attention_insight, heatmap_overlay
 from lenses.capture import capture_screenshot
 from lenses.copy_editor import run_synthesis_lens
+from lenses.fix_render import render_fixed_screenshot
 from lenses.readability import score_text_blocks
 from lenses.scoring import compute_overall_score, find_cta_candidate
 from lenses.vision import run_design_eye_lens
@@ -130,8 +131,13 @@ def run_audit(audit_id: str) -> None:
         heatmap_path = os.path.join(tmp, "heatmap.png")
         cv2.imwrite(heatmap_path, heatmap_img)
 
+        fixed_img = render_fixed_screenshot(screenshot_path, rule_book["contrast_issues"])
+        fixed_path = os.path.join(tmp, "fixed.png")
+        cv2.imwrite(fixed_path, fixed_img)
+
         annotated_storage_id = _upload_image(client, annotated_path)
         heatmap_storage_id = _upload_image(client, heatmap_path)
+        fixed_storage_id = _upload_image(client, fixed_path)
 
         client.mutation(
             "auditResults:submit",
@@ -147,6 +153,7 @@ def run_audit(audit_id: str) -> None:
                 "attentionInsight": attention_insight,
                 "saliencyHeatmapStorageId": heatmap_storage_id,
                 "annotatedImageStorageId": annotated_storage_id,
+                "fixedImageStorageId": fixed_storage_id,
             },
         )
         client.mutation("audits:markDone", {"id": audit_id})

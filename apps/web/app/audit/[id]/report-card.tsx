@@ -4,13 +4,22 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery } from "convex/react";
 import { motion } from "motion/react";
 import { animate } from "motion";
-import { Loader2, Sparkles, TrendingDown, TrendingUp, Minus } from "lucide-react";
+import { Loader2, Sparkles, TrendingDown, TrendingUp, Minus, Wand2 } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { LENSES } from "@/lib/lenses";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -89,6 +98,7 @@ const HOVER_COLOR: Record<HoveredBox["kind"], string> = {
 export function ReportCard({ audit }: { audit: AuditDoc }) {
   const result = useQuery(api.auditResults.getByAuditId, { auditId: audit._id });
   const [imageMode, setImageMode] = useState<"issues" | "attention">("issues");
+  const [fixMode, setFixMode] = useState<"before" | "after">("after");
   const [hovered, setHovered] = useState<HoveredBox | null>(null);
   const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
@@ -164,6 +174,67 @@ export function ReportCard({ audit }: { audit: AuditDoc }) {
                 </div>
               </CardContent>
             </Card>
+          </motion.div>
+        )}
+
+        {result.fixedImageUrl && contrastFailCount > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: EASE, delay: 0.06 }}
+            className="flex justify-center"
+          >
+            <Dialog onOpenChange={(open) => open && setFixMode("after")}>
+              <DialogTrigger
+                render={
+                  <Button variant="outline" size="sm">
+                    <Wand2 className="size-3.5" />
+                    See the {contrastFailCount} contrast {contrastFailCount === 1 ? "issue" : "issues"} fixed
+                  </Button>
+                }
+              />
+              <DialogContent className="sm:max-w-4xl">
+                <DialogHeader>
+                  <DialogTitle>Contrast fix preview</DialogTitle>
+                  <DialogDescription>
+                    Every failing text box recolored to a passing WCAG AA color, computed directly from the real
+                    sampled pixels -- not an AI-generated mockup.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="flex items-center justify-center gap-(--space-xs)">
+                  <button
+                    type="button"
+                    onClick={() => setFixMode("before")}
+                    className={`cursor-pointer rounded-(--radius-md) px-(--space-sm) py-1 text-xs font-medium transition-colors ${
+                      fixMode === "before"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Before
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFixMode("after")}
+                    className={`cursor-pointer rounded-(--radius-md) px-(--space-sm) py-1 text-xs font-medium transition-colors ${
+                      fixMode === "after"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    After
+                  </button>
+                </div>
+                <div className="max-h-[65vh] overflow-y-auto rounded-(--radius-md) border border-border">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- Convex-hosted, arbitrary-origin image */}
+                  <img
+                    src={fixMode === "before" ? result.annotatedImageUrl! : result.fixedImageUrl}
+                    alt={fixMode === "before" ? "Original screenshot with issues highlighted" : "Screenshot with contrast issues fixed"}
+                    className="w-full"
+                  />
+                </div>
+              </DialogContent>
+            </Dialog>
           </motion.div>
         )}
 
