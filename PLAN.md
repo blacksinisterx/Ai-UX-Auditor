@@ -121,9 +121,9 @@ One demo screenshot (or a tiny static HTML page rendered via URL input) built to
 3. ✅ Deterministic core built and verified standalone against a real screenshot: PaddleOCR extraction → contrast checker → target-size checker → textstat readability. Hand-checked — numbers matched what a human would expect (bright heading passes contrast at 12.41, tiny dark-on-dark diagram labels fail at 2.2–3.3).
 4. ✅ MSI-Net loaded and run on CPU against the same real screenshot: heatmap peak landed exactly on the main heading (37% of total attention mass vs. 1% on the small diagram labels), ~3.3s inference — comfortably fine for an Actions job.
 5. ✅ OpenRouter vision call + Groq call wired and run for real. Both required swapping the originally-planned model (see Research grounding above for what broke and why).
-6. `.github/workflows/audit.yml` + `ci_run_audit.py` tying the whole pipeline together; run once manually via `workflow_dispatch`, confirm Convex ends up with a correct, complete result row. **Not started** — needs the GitHub repo (deferred by user).
-7. Next.js scaffold done (`apps/web`, Convex wired in); full design-system pass and actual pages **not started**.
-8. Upload/URL input flow → live audit view → Report Card UI. **Not started**.
+6. `.github/workflows/audit.yml` + `ci_run_audit.py` tying the whole pipeline together; run once manually via `workflow_dispatch`, confirm Convex ends up with a correct, complete result row. **Not started** — repo now exists (github.com/blacksinisterx/Ai-UX-Auditor), this is next.
+7. ✅ Next.js scaffold + design pass done: `apps/web` on the ui-ux-pro-max "dark OLED developer tool" system (Fira Sans/Fira Code, dark-only palette, `--space-*` tokens), Convex wired in, Base UI-based shadcn (`render=`+`nativeButton={false}` for Button+Link, confirmed matches Exploit-Path-Tracer's pattern not the Radix one).
+8. ✅ Upload/URL input flow → live audit view → Report Card UI built and verified for real: submitted a real URL through the actual UI, watched a real Convex-backed audit record get created and the live view correctly subscribe to it. Report Card UI is built but not yet exercised against real completed data (no audit has finished yet, since step 6's pipeline doesn't exist).
 9. Deploy (Vercel + GitHub Actions), real Playwright smoke test against the deployed site. **Not started**.
 10. README with real screenshots, written note, demo recording. **Not started**.
 
