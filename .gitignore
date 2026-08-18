@@ -1,0 +1,24 @@
+# Node / Next.js
+node_modules/
+.next/
+out/
+apps/web/.env.local
+apps/web/convex/_generated/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+apps/agent/.env
+apps/agent/models/
+
+# Uploaded/generated audit artifacts
+apps/agent/uploads/
+apps/agent/output/
+*.zip
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
