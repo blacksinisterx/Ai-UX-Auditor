@@ -1,26 +1,25 @@
 # Demo Script — Aura, AI UX Auditor
 
-One narration track, aligned to `docs/aura-demo.webm` (video-only — read this over it). Recorded for real against the live deployed app: a real URL submitted through the actual UI, a real GitHub Actions job dispatched and run to completion, no staged data, no cuts. Every timecode, number, and quote below is taken directly from `scripts/record_demo.py`'s own timestamped log and a direct Convex query against this exact audit run (`j977edvcnbemh9nww9j5byw1518cq1e9`) — not guessed from watching the footage after the fact.
+One narration track, aligned to `docs/aura-demo.webm` / `.mp4` (video-only — read this over it, or feed both into the AI Video Narrator project to render a narrated cut). Recorded for real against the live deployed app: a real URL submitted through the actual UI, a real GitHub Actions job dispatched and run to completion, no staged data, no cuts. Every timecode, number, and quote below is taken directly from `scripts/record_demo.py`'s own timestamped log and a direct Convex query against this exact audit run (`j977edvcnbemh9nww9j5byw1518cq1e9`) — not guessed from watching the footage after the fact.
+
+**Pacing note:** each section's narration is word-budgeted against that section's *real* on-screen duration (from the recording script's own timestamps), not written first and timed after. The two moments with almost no real screen time (New Audit's URL submit, and the closing four-tab walkthrough) carry only a few words each on purpose; nearly all of the explanatory detail lives in the 4:27 the actual pipeline is genuinely running, because that's where nearly all of the video's real duration is.
 
 ---
 
 **[0:00–0:08] Home**
-"This is Aura, a UX-audit agent. You give it a URL or a screenshot, and instead of one LLM giving you a vibe check, it runs four independent lenses — three of them are real deterministic code, not AI guessing at numbers — and hands back a scored report with findings you can actually check."
+"This is Aura — a UX audit agent with four lenses, most of them real deterministic code."
 
 **[0:08–0:11] New audit**
-"I'm pasting a real URL — linear.app — and submitting it. That single click creates a record in Convex and dispatches a real GitHub Actions job. Nothing here is pre-computed or cached for the demo."
+"Submitting a real, live URL."
 
 **[0:11–4:38] Live pipeline**
-"This is running for real, live, on GitHub's infrastructure — real screenshot capture with Playwright, real OCR, real WCAG contrast math, a real saliency model, and two real AI calls. It takes a few minutes because none of it is simulated. While it runs: the deterministic 'Rule Book' lens samples actual pixel colors at every OCR-detected text box and runs the real WCAG relative-luminance formula — no LLM ever touches that number. A saliency model separately predicts where a real viewer's eyes would actually go, and that gets compared against wherever the page's primary call-to-action sits, as a real overlap ratio. Only after all of that does a single Gemini call add qualitative judgment — hierarchy, whitespace, whether the CTA actually reads as dominant — and one Groq call synthesizes everything into one headline finding."
+"That single click creates a record in Convex and dispatches a real GitHub Actions job — nothing here is staged or pre-computed for a demo. Here's what's actually happening on GitHub's own infrastructure right now, in order. First, a headless browser captures the entire page, not just what fits in one screen. Then a real OCR model reads every visible string and its exact pixel position. From those positions, the deterministic Rule Book lens samples the actual pixel colors around each piece of text and runs the real WCAG relative-luminance formula — the contrast ratio you'll see in a minute isn't an LLM's guess, it's the same math a browser's own accessibility inspector would compute. Those same OCR boxes also get checked against the forty-four by forty-four pixel minimum tap-target size WCAG requires for anything clickable. Next, a real saliency model — a neural network trained specifically to predict where a human's eyes would actually land — generates an attention heatmap, which gets compared against wherever the page's most likely call-to-action sits, producing a real overlap ratio: is this button getting more visual attention than its size would predict, less, or about what you'd expect? Only after all of that deterministic work is done does an AI model get involved at all — one call to Gemini, asked to make the kind of qualitative judgment code genuinely can't: does the hierarchy read correctly, is the whitespace generous or cramped, does the primary button actually look dominant, or does something else compete with it? And finally, one call to Groq synthesizes everything — the score, the contrast failures, the saliency number, the AI's layout critique, and every piece of genuinely hard-to-read copy on the page — into one specific, quantified headline finding, and rewrites each of those copy snippets into something clearer. Two AI calls total, both bounded, both doing real synthesis work, not being asked one more time each for a vague opinion."
 
-**[4:38–4:40] Score and headline finding**
-"And it's done — 53 out of 100 for linear.app. The headline finding isn't a template; it's synthesized from this run's actual numbers: 26 elements failing WCAG AA contrast, 64 tap targets under the 44-by-44-pixel minimum, and it names the single worst offender specifically — the code-diff preview under 'Review PRs and agent output,' where the line numbers and inline tags are dark-gray on black and effectively unreadable."
+**[4:38–4:43] Score and headline finding**
+"53 out of 100 — a real, synthesized headline, not a template."
 
-**[4:40–4:43] See it fixed**
-"Here's the part that matters most: this button doesn't call an AI to imagine a fixed version — I actually tested that route and Gemini's image-generation models all return zero quota on the free tier, so instead this recolors the *actual failing pixels* to a color mathematically computed to just clear WCAG AA."
+**[4:43–4:50] See it fixed**
+"And here's the fix — real recolored pixels, not an AI-generated mockup."
 
-**[4:43–4:48] Before / After**
-"Toggling between before and after on the real screenshot — same page, same layout, only the specific failing text recolored based on real sampled pixel math. Nothing generated, nothing imagined."
-
-**[4:48–5:00] The other three lenses**
-"Rule Book is the raw deterministic data behind the headline finding — every contrast ratio and tap-target size, individually. Copy Editor pulled ten genuinely low-readability text snippets straight from the page's real OCR text and rewrote each one — this one turned 'Render Ul before vehicle_state sync when minimum required state is present' into a plain sentence. Psychologist shows the real number behind the attention claim: this page's likely primary CTA, 'Contact sales,' takes up 0.02% of the screen and gets 0.03% of total visual attention — a 1.49x density ratio, meaning it's getting roughly the attention its size would predict, not more, not less. And Design Eye is the one AI-judgment call in the whole report — it independently named the exact same code-diff contrast problem the deterministic math flagged, plus specifics no deterministic check could catch: that the bright testimonial quote actually competes with the real 'Get started' button for attention."
+**[4:50–5:00] The other three lenses**
+"Rule Book, Psychologist, Copy Editor, Design Eye — the same real numbers, individually, provable, checkable."
