@@ -57,7 +57,7 @@ Exactly two AI calls per audit, both bounded — the Groq call does more work pe
 
 ## Demo video
 
-[`docs/aura-demo.webm`](docs/aura-demo.webm) — a real Playwright recording of the deployed app, submitting a live URL through the actual UI and watching it run to completion (no cuts, no staged data). Narration script: [`DEMO_SCRIPT.md`](DEMO_SCRIPT.md).
+[`docs/aura-demo.mp4`](docs/aura-demo.mp4) ([`.webm`](docs/aura-demo.webm) original) — a real Playwright recording of the deployed app, submitting a live URL through the actual UI and watching it run to completion (no cuts, no staged data). Narration script: [`DEMO_SCRIPT.md`](DEMO_SCRIPT.md).
 
 ## Try it yourself
 
@@ -161,7 +161,8 @@ apps/
     run_saliency_subprocess.py  Saliency prediction, isolated from PaddleOCR's native libs
 docs/
   screenshots/      Real screenshots used above
-  aura-demo.webm    Real Playwright screen recording
+  aura-demo.webm    Real Playwright screen recording (original)
+  aura-demo.mp4     Same recording, converted for broader playback compatibility
 scripts/
   capture_screenshots.py  Regenerates the README screenshots for real
   record_demo.py          Regenerates the demo video for real
